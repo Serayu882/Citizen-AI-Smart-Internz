@@ -1,0 +1,74 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict
+import random
+
+app = FastAPI(title="Citizen AI - Intelligent Citizen Engagement Platform")
+
+class ChatMessage(BaseModel):
+    message: str
+
+class ChatReply(BaseModel):
+    reply: str
+
+class Feedback(BaseModel):
+    citizen_id: str
+    feedback: str
+
+class ServiceRequest(BaseModel):
+    citizen_id: str
+    request_type: str
+    description: str
+
+class ServiceStatus(BaseModel):
+    request_id: int
+    status: str
+
+feedback_db: List[Dict] = []
+service_db: List[Dict] = []
+service_id_counter = 1
+
+@app.post("/chat", response_model=ChatReply)
+def chat(msg: ChatMessage):
+    responses = [
+        "Thank you for reaching out! How can I assist you today?",
+        "Your request has been received. We'll get back to you soon.",
+        "Could you please provide more details about your issue?",
+        "We value your feedback. Is there anything else?"
+    ]
+    return ChatReply(reply=random.choice(responses))
+
+@app.post("/feedback")
+def submit_feedback(fb: Feedback):
+    feedback_db.append(fb.dict())
+    return {"status": "success", "message": "Feedback submitted. Thank you!"}
+
+@app.get("/feedbacks")
+def list_feedbacks():
+    return feedback_db
+
+@app.post("/service/request")
+def create_service_request(sr: ServiceRequest):
+    global service_id_counter
+    entry = sr.dict()
+    entry["request_id"] = service_id_counter
+    entry["status"] = "pending"
+    service_db.append(entry)
+    service_id_counter += 1
+    return {"status": "success", "request_id": entry["request_id"], "message": "Service request created."}
+
+@app.get("/service/status/{request_id}", response_model=ServiceStatus)
+def get_service_status(request_id: int):
+    for req in service_db:
+        if req["request_id"] == request_id:
+            return ServiceStatus(request_id=request_id, status=req["status"])
+    raise HTTPException(status_code=404, detail="Request not found.")
+
+@app.get("/")
+def root():
+    return {"message": "Welcome to Citizen AI - Intelligent Citizen Engagement Platform"}
+
+
+Output:
+-------
+        [Done] exited with code=1
